@@ -1,0 +1,21 @@
+# Ignore object files and executables
+*.o
+*.out
+
+# Ignore compiled binaries
+bin/
+
+# Ignore build directories
+build/
+dist/
+# data/
+
+# Ignore generated files
+Makefile
+CMakeLists.txt.user
+*.exe
+*.dll
+*.so
+*.dylib
+*.a
+*.lib

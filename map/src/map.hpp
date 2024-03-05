@@ -24,6 +24,145 @@ public:
 	 * You can use sjtu::map as value_type by typedef.
 	 */
 	typedef pair<const Key, T> value_type;
+	
+	enum Color{BLACK,RED};
+    struct Node{
+        Node *left,*right,*parent;
+        value_type val;
+        int size;
+        Node():left(nullptr),size(0),right(nullptr),parent(nullptr){}
+        Node(const value_type &val):left(nullptr),size(1),right(nullptr),parent(nullptr),val(val){}
+    };
+    Node *root;
+    map():root(nullptr){}
+    ~map(){destruct_tree(root);}
+    void destruct_tree(Node *node){
+        if(node==nullptr)return;
+        destruct_tree(node->left);
+        destruct_tree(node->right);
+        delete node;
+    }
+    int size()
+    {
+        if(root==nullptr)
+            return 0;
+        return root->size;
+    }
+    bool empty()
+    {
+        return size()==0;
+    }
+    void clear()
+    {
+        destruct_tree(root);
+        root=nullptr;
+    }
+    Node * search(const key_t &key)
+    {
+        Node *node=root;
+        while(node!=nullptr)
+        {
+            if(Compare()(key,node->val.first))
+                node=node->left;
+            else if(Compare()(node->val.first,key))
+                node=node->right;
+            else
+                return node;
+        }
+        return nullptr;
+    }
+    Node* find_prev(Node * node)
+    {
+        if(node==nullptr)
+        {
+            throw index_out_of_bound("find_prev: node is nullptr");
+        }
+        if(node->left!=nullptr)
+        {
+            node=node->left;
+            while(node->right!=nullptr)
+                node=node->right;
+            return node;
+        }
+        else
+        {
+            while(node->parent!=nullptr&&node->parent->left==node)
+                node=node->parent;
+            return node->parent;
+        }
+    }
+    Node* find_next(Node * node)
+    {
+        if(node==nullptr)
+        {
+			throw index_out_of_bound("find_next: node is nullptr");
+        }
+        if(node->right!=nullptr)
+        {
+            node=node->right;
+            while(node->left!=nullptr)
+                node=node->left;
+            return node;
+        }
+        else
+        {
+            while(node->parent!=nullptr&&node->parent->right==node)
+                node=node->parent;
+            return node->parent;
+        }
+    }
+
+
+    Node* find_first_element()
+    {
+        Node *node=root;
+        if(node==nullptr)
+            return nullptr;
+        while(node->left!=nullptr)
+            node=node->left;
+        return node;
+    }
+    Node* find_last_element()
+    {
+        Node *node=root;
+        if(node==nullptr)
+            return nullptr;
+        while(node->right!=nullptr)
+            node=node->right;
+        return node;
+    }
+    
+    Node* insert(const value_type &val)
+    {
+        Node *node=root;
+        Node *parent=nullptr;
+        while(node!=nullptr)
+        {
+            parent=node;
+            if(Compare()(val.first,node->val.first))
+                node=node->left;
+            else if(Compare()(node->val.first,val.first))
+                node=node->right;
+            else
+                return node;
+        }
+        Node *new_node=new Node(val);
+        new_node->parent=parent;
+        if(parent==nullptr)
+        {
+            root=new_node;
+        }
+        else if(Compare()(val.first,parent->val.first))
+        {
+            parent->left=new_node;
+        }
+        else
+        {
+            parent->right=new_node;
+        }
+        insert_fixup(new_node);
+        return new_node;
+    }
 	/**
 	 * see BidirectionalIterator at CppReference for help.
 	 *
@@ -101,7 +240,6 @@ public:
 	/**
 	 * TODO two constructors
 	 */
-	map() {}
 	map(const map &other) {}
 	/**
 	 * TODO assignment operator
@@ -110,7 +248,6 @@ public:
 	/**
 	 * TODO Destructors
 	 */
-	~map() {}
 	/**
 	 * TODO
 	 * access specified element with bounds checking
@@ -153,14 +290,12 @@ public:
 	/**
 	 * clears the contents
 	 */
-	void clear() {}
 	/**
 	 * insert an element.
 	 * return a pair, the first of the pair is
 	 *   the iterator to the new element (or the element that prevented the insertion), 
 	 *   the second one is true if insert successfully, or false.
 	 */
-	pair<iterator, bool> insert(const value_type &value) {}
 	/**
 	 * erase the element at pos.
 	 *
