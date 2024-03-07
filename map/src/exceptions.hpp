@@ -43,6 +43,11 @@ class container_is_empty : public exception {
 	public:
 	container_is_empty(std::string str) : exception(str) {}
 };
+class invalid_operator : public exception {
+	/* __________________________ */
+	public:
+	invalid_operator(std::string str) : exception(str) {}
+};
 }
 
 #endif
