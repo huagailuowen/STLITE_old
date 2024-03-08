@@ -7,6 +7,8 @@
 // only for std::less<T>
 #include <functional>
 #include <cstddef>
+#include <regex>
+#include <sys/types.h>
 #include "utility.hpp"
 #include "exceptions.hpp"
 
@@ -437,29 +439,116 @@ public:
 		if(rhs->right!=nullptr)
 			rhs->right->parent=rhs;
 	}
-	void erase_fixdown(Node *node)
+	bool is_two_blackchild(Node* node)
+	{
+		if(node==nullptr)
+			throw invalid_operator("is_two_blackchild: node is nullptr");	
+		if(node->left&&node->left->color==RED)
+			return false;
+		if(node->right&&node->right->color==RED)
+			return false;
+		return true;
+	
+	}
+	void erase_fixdown(Node *node,const key_t key)
 	{
 		if(node==nullptr)
 			return ;
 		if(node->color==RED)
 			return ;	
 		
-		if(node->parent==nullptr)
-		{
-			//root
-			if(node->left&&node->right&&node->left->color==node->right->color&&node->left->color==BLACK)
-			{
-				node->color=RED;
-				node->left->color=BLACK;
-				node->right->color=BLACK;
-				return ;
-			}
-		}
+		// if(node->parent==nullptr)
+		// {
+		// 	//root
+		// 	if(node->left&&node->right&&node->left->color==node->right->color&&node->left->color==BLACK)
+		// 	{
+		// 		node->color=RED;
+		// 		node->left->color=BLACK;
+		// 		node->right->color=BLACK;
+		// 		return ;
+		// 	}
+
+
+		// 	//to do
+		// }
 		Node *father=node->parent;
-		Node *brother=is_left(node)?father->right:father->left;
+		Node *brother=father==nullptr?nullptr:(is_left(node)?father->right:father->left);
 		//we assume that parent is red
 		//and now we try to change node into red
 
+		//if brother exist!!!!!!!
+		if(is_two_blackchild(node)){
+			if(!brother||is_two_blackchild(brother))
+			{
+				if(father)father->color=BLACK;
+				if(brother)brother->color=RED;
+				node->color=RED;
+				return ;
+			}
+			if(is_left(node)){
+
+				if(brother->left&&brother->left->color==RED)
+				{
+					rotate_right(brother);
+					rotate_left(father);
+					node->color=RED;
+					father->color=BLACK;
+				}else{
+					rotate_left(father);
+					node->color=RED;
+					father->color=BLACK;
+					brother->color=RED;
+					brother->right->color=BLACK;
+					//brother's right is still itself
+				}
+			}else{
+
+				if(brother->right&&brother->right->color==RED)
+				{
+					rotate_left(brother);
+					rotate_right(father);
+					node->color=RED;
+					father->color=BLACK;
+				}else{
+					rotate_right(father);
+					node->color=RED;
+					father->color=BLACK;
+					brother->color=RED;
+					brother->left->color=BLACK;
+					//brother's left is still itself
+				}
+			}
+			return;
+		}
+		if(Compare()(key,node->val.first)){
+			if(node->left&&node->left->color==BLACK)
+			{
+				rotate_left(node);
+				std::swap(node->color,node->parent->color);
+			}
+		}else if(Compare()(node->val.first,key)){
+			if(node->right&&node->right->color==BLACK)
+			{
+				rotate_right(node);
+				std::swap(node->color,node->parent->color);
+			}
+		}else{
+			//delete node
+			if(!node->left){
+				rotate_left(node);
+				std::swap(node->color,node->parent->color);
+			}else if(!node->right){
+				rotate_right(node);
+				std::swap(node->color,node->parent->color);
+			}else{
+				if(node->right->color==BLACK)
+				{
+					rotate_right(node);
+					std::swap(node->color,node->parent->color);
+				}
+			}
+		}	
+		
 	}
 	/**
 	 * see BidirectionalIterator at CppReference for help.
