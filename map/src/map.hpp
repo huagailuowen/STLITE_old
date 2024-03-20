@@ -197,6 +197,7 @@ public:
             node=node->right;
         return node;
     }
+	
 	bool is_left_(Node *node)
 	{
 		if(node==nullptr){
@@ -336,7 +337,7 @@ public:
 		}
 	}
 
-    Node* insert_bykey(const value_type &val)
+    sjtu::pair<Node*,bool> insert_bykey(const value_type &val)
     {
         Node *node=root;
         Node *parent=nullptr;
@@ -349,7 +350,7 @@ public:
             else if(Compare()(node->val.first,val.first))
                 node=node->right,is_left=false;
             else
-                return nullptr;
+                return pair(node,false);
         }
        	node=new Node(val,RED);
         node->parent=parent;
@@ -357,7 +358,7 @@ public:
         {
             root=node;
 			node->color=BLACK;
-			return node;
+			return pair(node,true);
         }
         else if(is_left)
         {
@@ -368,7 +369,7 @@ public:
             parent->right=node;
         }
         insert_fixup(node);
-        return node;
+        return pair(node,true);
     }
 	void update_up(Node *node)
 	{
@@ -380,12 +381,20 @@ public:
 	class iterator;
 	pair<iterator,bool> insert(const value_type &val)
 	{
-		Node *node=insert_bykey(val);
-		if(node==nullptr)
-			return pair(end(),false);
+		sjtu::pair<Node *,bool>res=insert_bykey(val);
+		if(!res.second)
+			return pair(iterator(res.first,this),false);
 		else
-			return pair(iterator(node),true);
+			return pair(iterator(res.first,this),true);
 	}
+	// iterator insert(const value_type &val)
+	// {
+	// 	Node *node=insert_bykey(val);
+	// 	if(node==nullptr)
+	// 		return end();
+	// 	else
+	// 		return iterator(node);
+	// }
 	void erase(const Key &key)
 	{
 		if(root==nullptr)
@@ -672,27 +681,32 @@ public:
 	 public:
 	class const_iterator;
 	class iterator {
-		
+		public:
 		friend class map;
+	#ifndef DEBUG
 	private:
+	#endif
 		/**
 		 * TODO add data members
 		 *   just add whatever you want.
 		 */
 		 Node * ptr;
          bool is_end=true;
+		const map *treeptr;
 	public:
 		iterator() {
 			// TODO
             ptr=nullptr;
 			is_end=true;
+			treeptr=nullptr;
 		}
 		iterator(const iterator &other) {
 			// TODO
 			ptr=other.ptr;
 			is_end=other.is_end;
+			treeptr=other.treeptr;
 		}
-		iterator(Node *node,bool is_end=false):ptr(node),is_end(is_end){}
+		iterator(Node *node,const map *tis,bool is_end=false):ptr(node),treeptr(tis),is_end(is_end)	{}
 		/**
 		 * TODO iter++
 		 */
@@ -703,9 +717,9 @@ public:
 			iterator tmp(*this);
 			ptr=find_next(ptr);
 			if(ptr)
-				*this=iterator(ptr);
+				*this=iterator(ptr,treeptr);
 			else
-				*this= iterator(tmp.ptr,true);
+				*this= iterator(nullptr,treeptr,true);
 			return tmp;
 		}
 		/**
@@ -718,39 +732,47 @@ public:
 			Node* tmp=ptr;
 			ptr=find_next(ptr);
 			if(ptr)
-				return *this=iterator(ptr);
+				return *this=iterator(ptr,treeptr);
 			else
-				return *this=iterator(tmp,true);
+				return *this=iterator(nullptr,treeptr,true);
 		}
 		/**
 		 * TODO iter--
 		 */
 		iterator operator--(int) {
-			if(!ptr)
-				throw invalid_iterator("iterator--: is_begin");
 			if(is_end){
-				return iterator(ptr);
+				Node * tmp=treeptr->find_last_element();
+				if(!tmp)
+					throw invalid_iterator("iterator--: is_end");
+				this->is_end=false;
+				this->ptr=tmp;
+				return iterator(nullptr,treeptr,true);
 			}
+			Node *tmp=ptr;
 			ptr=find_prev(ptr);
 			if(!ptr)
 				throw invalid_iterator("iterator--: is_end");
 			else
-				return iterator(ptr);
+				return iterator(tmp,treeptr);
 		}
 		/**
 		 * TODO --iter
 		 */
 		iterator & operator--() {
-			if(!ptr)
-				throw invalid_iterator("--iterator: is_begin");
 			if(is_end){
-				return *this=iterator(ptr);
+				Node * tmp=treeptr->find_last_element();
+				if(!tmp)
+					throw invalid_iterator("iterator--: is_end");
+				this->is_end=false;
+				this->ptr=tmp;
+				return *this;
+			
 			}
 			ptr=find_prev(ptr);
 			if(!ptr)
 				throw invalid_iterator("--iterator: is_begin");
 			else
-				return *this=iterator(ptr);
+				return *this;
 		}
 		/**
 		 * a operator to check whether two iterators are same (pointing to the same memory).
@@ -762,10 +784,10 @@ public:
 			return ptr->val;
 		}
 		bool operator==(const iterator &rhs) const {
-			return ptr==rhs.ptr&&is_end==rhs.is_end;
+			return ptr==rhs.ptr&&is_end==rhs.is_end&&treeptr==rhs.treeptr;
 		}
 		bool operator==(const const_iterator &rhs) const {
-			return ptr==rhs.ptr&&is_end==rhs.is_end;
+			return ptr==rhs.ptr&&is_end==rhs.is_end&&treeptr==rhs.treeptr;
 		}
 		/**
 		 * some other operator for iterator.
@@ -793,36 +815,42 @@ public:
 		private:
 			const Node * ptr;
 			bool is_end;
+			const map *treeptr;
 		public:
-			const_iterator():ptr(nullptr),is_end(true) {}
+			const_iterator():ptr(nullptr),is_end(true),treeptr(nullptr) {}
 			const_iterator(const const_iterator &other) {
 				ptr=other.ptr;
 				is_end=other.is_end;
+				treeptr=other.treeptr;
 			}
 			const_iterator(const iterator &other) {
 				ptr=other.ptr;
 				is_end=other.is_end;
+				treeptr=other.treeptr;
 			}
-			const_iterator(const Node *node,bool is_end=false):ptr(node),is_end(is_end){}
+			const_iterator(const Node *node,const map* treeptr,bool is_end=false):ptr(node),treeptr(treeptr),is_end(is_end){}
 			const_iterator& operator=(const const_iterator &other) {
 				ptr=other.ptr;
 				is_end=other.is_end;
+				treeptr=other.treeptr;
 				return *this;
 			}
 			const_iterator& operator=(const iterator &other) {
 				ptr=other.ptr;
 				is_end=other.is_end;
+				treeptr=other.treeptr;
 				return *this;
 			}
 			const_iterator& operator++() {
 				if(is_end){
 					throw invalid_iterator("++iterator: is_end");
 				}
+				const Node *tmp=ptr;
 				ptr=find_next(ptr);
 				if(ptr)
 					return *this;
 				else
-					return *this=const_iterator(ptr,true);
+					return *this=const_iterator(nullptr,treeptr,true);
 			}
 			const_iterator operator++(int) {
 				if(is_end){
@@ -833,35 +861,42 @@ public:
 				if(ptr)
 					return tmp;
 				else{
-					ptr=tmp.ptr;
 					is_end=true;
 					return tmp;
 				}
 			}
 			const_iterator& operator--() {
-				if(!ptr)
-					throw invalid_iterator("--iterator: is_begin");
 				if(is_end){
-					return *this=const_iterator(ptr);
+					const Node * tmp=treeptr->find_last_element();
+					if(!tmp)
+						throw invalid_iterator("iterator--: is_end");
+					this->is_end=false;
+					this->ptr=tmp;
+					return *this;
+				
 				}
 				ptr=find_prev(ptr);
 				if(!ptr)
 					throw invalid_iterator("--iterator: is_begin");
 				else
 					return *this;
+				
 			}
 			const_iterator operator--(int) {
-				if(!ptr)
-					throw invalid_iterator("iterator--: is_begin");
 				if(is_end){
-					return const_iterator(ptr);
+					const Node * tmp=treeptr->find_last_element();
+					if(!tmp)
+						throw invalid_iterator("iterator--: is_end");
+					this->is_end=false;
+					this->ptr=tmp;
+					return iterator(nullptr,treeptr,true);
 				}
-				const_iterator tmp(*this);
+				const Node *tmp=ptr;
 				ptr=find_prev(ptr);
 				if(!ptr)
-					throw invalid_iterator("iterator--: is_begin");
+					throw invalid_iterator("iterator--: is_end");
 				else
-					return tmp;
+					return const_iterator(tmp,treeptr);
 			}
 			const value_type& operator*() const {
 				if(is_end||!ptr){
@@ -870,16 +905,16 @@ public:
 				return ptr->val;
 			}
 			bool operator==(const const_iterator &rhs) const {
-				return ptr==rhs.ptr&&is_end==rhs.is_end;
+				return ptr==rhs.ptr&&is_end==rhs.is_end&&treeptr==rhs.treeptr;
 			}
 			bool operator==(const iterator &rhs) const {
-				return ptr==rhs.ptr&&is_end==rhs.is_end;
+				return ptr==rhs.ptr&&is_end==rhs.is_end&&treeptr==rhs.treeptr;
 			}
 			bool operator!=(const const_iterator &rhs) const {
-				return ptr!=rhs.ptr||is_end!=rhs.is_end;
+				return ptr!=rhs.ptr||is_end!=rhs.is_end	||treeptr!=rhs.treeptr;
 			}
 			bool operator!=(const iterator &rhs) const {
-				return ptr!=rhs.ptr||is_end!=rhs.is_end;
+				return ptr!=rhs.ptr||is_end!=rhs.is_end	||treeptr!=rhs.treeptr;
 			}
 			const value_type* operator->() const noexcept {
 				if(is_end||!ptr){
@@ -921,8 +956,11 @@ public:
 	map(const map &other) {
 		// TODO
 		root=nullptr;
+		// int cnt=0;
+		// std::cerr<<"**";
 		for(const_iterator it=other.cbegin();it!=other.cend();it++)
 		{
+			// std::cerr<<++cnt<<std::endl;
 			insert(*it);
 		}
 	}
@@ -968,11 +1006,8 @@ public:
 	 *   performing an insertion if such key does not already exist.
 	 */
 	T & operator[](const Key &key) {
-		Node *node=search(key);
-		if(node==nullptr)
-		{
-			node=insert_bykey(value_type(key,T()));
-		}
+		pair<Node*,bool>res=insert_bykey(value_type(key,T()));
+		Node *node=res.first;
 		return node->val.second;
 	}
 	/**
@@ -990,34 +1025,36 @@ public:
 	iterator begin() {
 		Node *node=find_first_element();
 		if(node)
-			return iterator(node);
+			return iterator(node,this);
 		else
-			return iterator();
+			return iterator(nullptr,this,true);
 	}
 	const_iterator cbegin() const {
 		const Node *node=find_first_element();
 		if(node)
-			return const_iterator(node);
+			return const_iterator(node,this);
 		else
-			return const_iterator();
+			return const_iterator(nullptr,this,true);
 	}
 	/**
 	 * return a iterator to the end
 	 * in fact, it returns past-the-end.
 	 */
 	iterator end() {
-		Node * node=find_last_element();
-		if(node)
-			return iterator(node,true);
-		else
-			return iterator(nullptr,true);
+		// Node * node=find_last_element();
+		// if(node)
+		// 	return iterator(node,this,true);
+		// else
+		// 	
+		return iterator(nullptr,this,true);
 	}
 	const_iterator cend() const {
-		const Node * node=find_last_element();
-		if(node)
-			return const_iterator(node,true);
-		else
-			return const_iterator(nullptr,true);
+		// const Node * node=find_last_element();
+		// if(node)
+		// 	return const_iterator(node,this,true);
+		// else
+		// 	
+		return const_iterator(nullptr,this,true);
 	}
 	/**
 	 * checks whether the container is empty
@@ -1047,7 +1084,12 @@ public:
 			throw invalid_iterator("erase: pos==end()");
 		if(pos.ptr==nullptr)
 			throw invalid_iterator("erase: pos.ptr==nullptr");
+		// if(pos.is_end||pos.ptr==nullptr)
+		// 	return ;
+		if(pos.treeptr!=this)
+			throw invalid_iterator("not on this tree");
 		erase(pos->first);
+		
 	}
 	// void erase(const Key &key)
 	// {
@@ -1076,13 +1118,13 @@ public:
 		Node *node=search(key);
 		if(node==nullptr)
 			return end();
-		return iterator(node);
+		return iterator(node,this);
 	}
 	auto find(const Key &key)const ->const_iterator  {
 		Node *node=search(key);
 		if(node==nullptr)
 			return cend();
-		return const_iterator(node);
+		return const_iterator(node,this);
 	}
 	
 	// const_iterator find(const Key &key) const {
